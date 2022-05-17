@@ -1,0 +1,110 @@
+name: 'Build test and deploy Eshop'
+
+on:
+  workflow_dispatch:
+  push:
+
+jobs:
+  Install:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.WORKFLOW_TOKEN }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v2
+        with:
+          node-version: 10
+
+      - name: Cache node modules
+        uses: actions/cache@v3
+        with:
+          path: node_modules
+          key: node_modules-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: node_modules-
+
+      - name: Install packages with npm
+        run: |
+          npm ci
+  Build:
+    needs: Install
+    runs-on: ubuntu-latest
+    if: ${{ github.ref == 'refs/heads/main' }}
+
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.WORKFLOW_TOKEN }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v2
+        with:
+          node-version: 10
+
+      - name: Cache node modules
+        uses: actions/cache@v3
+        with:
+          path: node_modules
+          key: node_modules-${{ hashFiles('**/package-lock.json') }}
+
+      - name: Build
+        run: |
+          npm rebuild node-sass --force
+          npm run build -- --colors
+  Test:
+    needs: Install
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.WORKFLOW_TOKEN }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v2
+        with:
+          node-version: 10
+
+      - name: Cache node modules
+        uses: actions/cache@v3
+        with:
+          path: node_modules
+          key: node_modules-${{ hashFiles('**/package-lock.json') }}
+
+      - name: Run Tests
+        run: |
+          npm run test -- --colors
+  Deploy:
+    needs: Test
+    runs-on: ubuntu-latest
+    if: ${{ github.ref == 'refs/heads/main' }}
+
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.WORKFLOW_TOKEN }}
+
+      - name: Cache node modules and build folder
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.npm
+            ./node_modules
+            ./build
+          key: ${{ runner.os }}-build-${{ github.run_id }}
+
+      - name: Ansible script
+        uses: dawidd6/action-ansible-playbook@v2.5.0
+        with:
+          playbook: deploy_ec2.yml
+          directory: ./.aws/
+          vault_password: ${{ secrets.ANSIBLE_PASS }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          options: |
+            --verbose
