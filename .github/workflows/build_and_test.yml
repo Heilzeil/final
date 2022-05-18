@@ -104,7 +104,7 @@ jobs:
         with:
           playbook: deploy_ec2.yml
           directory: ./.aws/
-          vault_password: ${{ secrets.ANSIBLE_PASS }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
+        #  vault_password: ${{ secrets.ANSIBLE_PASS }}
+        #  key: ${{ secrets.SSH_PRIVATE_KEY }}
           options: |
             --verbose
