@@ -1,4 +1,4 @@
-name: 'Build test and deploy Eshop 2'
+name: 'Build test and deploy Eshop'
 
 on:
   workflow_dispatch:
